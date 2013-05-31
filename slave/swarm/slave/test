@@ -1,0 +1,29 @@
+include.clean()
+include.path("/swarm/slave")
+include.file("NetManager.lua")
+include.file("Swarm.lua")
+include.file("ThreadPool.lua")
+include.file("Navigation.lua")
+include.file("Vector.lua")
+
+local args = {...}
+
+local threadPool = ThreadPool.new()
+
+local function mainThread()
+  while true do
+    os.pullEvent()
+  end
+end
+
+Navigation.detourFunctions()
+Navigation.setOrientation(Direction[args[1]], Vector.new(tonumber(args[2]), tonumber(args[3]), tonumber(args[4])))
+
+Swarm.init(1, 1337, "right")
+Swarm.join()
+
+threadPool:add(mainThread)
+threadPool:add(Swarm.run)
+threadPool:waitForAll()
+
+Navigation.restoreFunctions()

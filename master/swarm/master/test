@@ -1,0 +1,38 @@
+include.clean()
+include.path("/swarm/master/")
+include.file("Swarm.lua")
+include.file("ThreadPool.lua")
+include.file("Hook.lua")
+
+local threadPool = ThreadPool.new()
+
+local function mainThread()
+  local function task(id)
+    print("New task! Worker ID: " .. id)
+    sleep(id)
+    turtle.up()
+    sleep(1.5)
+    turtle.down()
+    print("Task finished!")
+  end
+
+  Hook.add("TurtleJoin", function(event)
+    print("Turtle #" .. event.turtle.id .. " has joined the swarm!")
+
+    local turtles = Swarm.allocTurtles(2)
+    if turtles then
+      print("Allocated " .. #turtles .. " turtles!")
+      Swarm.submitTask(task, turtles)
+    end
+  end)
+
+  Hook.add("TurtleLeave", function(event)
+    print("Turtle #" .. event.turtle.id .. " has left the swarm!")
+  end)
+end
+
+Swarm.init(1337, "right")
+
+threadPool:add(mainThread)
+threadPool:add(Swarm.run)
+threadPool:waitForAll()

@@ -1,0 +1,71 @@
+local includedFiles = { }
+local includePaths = { }
+local includedKeys = { }
+
+local preserveGlobals
+local restoreGlobals
+
+function clean()
+  includedFiles = { }
+  includePaths = { }
+  
+  for k in pairs(includedKeys) do
+    _G[k] = nil
+  end
+end
+
+function path(path)
+  table.insert(includePaths, path)
+end
+
+function file(path)
+  if not path or type(path) ~= "string" then
+    error("Argument #1 must be a string value.")
+  end
+  
+  -- Search the include paths for the file
+  local realPath
+  local err = true
+  for _, includePath in ipairs(includePaths) do
+    realPath = fs.combine(includePath, path)
+    if fs.exists(realPath) and not fs.isDir(realPath) then
+      err = false
+    end
+  end
+  
+  if err then error("File does not exist.") end
+  path = realPath
+  
+  -- Check if we already have this file included
+  if   includedFiles[path] then return
+  else includedFiles[path] = true end
+  
+  -- Get the file handle for reading
+  local handle = fs.open(path, "r")
+  if not handle then
+    error("Failed to open file.")
+  end
+  
+  -- Compile the file
+  local func, err = loadstring(handle.readAll())
+  if not func then
+    error("Compile error in included file " .. path .. ": " .. err)
+  end
+  
+  -- Save the current keys in _G
+  local globalKeys = { }
+  for k in pairs(_G) do
+    globalKeys[k] = k
+  end
+  
+  -- Set the environment and call the function
+  setfenv(func, _G)
+  func()
+  
+  -- Look for new globals
+  for k in pairs(_G) do
+    if not globalKeys[k] then
+      includedKeys[k] = k
+    end
+  end
+end
